@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puntajes - Unidad Scout Santa Ana</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none;
+        }
+        #app-container {
+            height: 100vh;
+            max-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: #0f172a;
+        }
+        #mountain-container {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(to top, #1e293b, #334155);
+        }
+        .mountain-layer {
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .mountain-back {
+            background: linear-gradient(to top, #3730a3, #4338ca);
+            clip-path: polygon(0% 100%, 0% 70%, 20% 55%, 40% 75%, 65% 50%, 80% 65%, 100% 70%, 100% 100%);
+            z-index: 1;
+        }
+        .mountain-front {
+            background: linear-gradient(to top, #1e1b4b, #312e81);
+            clip-path: polygon(0 100%, 25% 100%, 50% 30%, 75% 100%, 100% 100%);
+            z-index: 2;
+        }
+        .mountain-snow {
+            background: #f0f4f8;
+            clip-path: polygon(44% 45%, 50% 30%, 56% 45%);
+            z-index: 3;
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background-color: white;
+            border-radius: 50%;
+            animation: twinkle 4s infinite ease-in-out;
+        }
+        @keyframes shooting-star {
+            0% { transform: translate(0, 0) rotate(-15deg); opacity: 1; }
+            100% { transform: translate(-800px, 300px) rotate(-15deg); opacity: 0; }
+        }
+        .shooting-star {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(to right, white, transparent);
+            animation: shooting-star 10s linear infinite;
+            z-index: 0;
+        }
+        .ss-1 { top: 50px; right: 0; width: 80px; animation-delay: 3s; }
+        .ss-2 { top: 150px; right: 0; width: 100px; animation-delay: 8s; animation-duration: 9s; }
+        .ss-3 { top: 25%; right: 0; width: 60px; animation-delay: 1s; animation-duration: 7s; }
+        .patrol-climber {
+            position: absolute;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            transition: bottom 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 0 0 4px black;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            border: 2px solid white;
+            background-size: cover;
+            background-position: center;
+            z-index: 10;
+        }
+        @keyframes float-up {
+            from { opacity: 1; transform: translateY(0) scale(1); }
+            to { opacity: 0; transform: translateY(-50px) scale(1.1); }
+        }
+        .progress-float {
+            position: absolute;
+            top: -25px; left: 50%; transform: translateX(-50%);
+            font-size: 1rem; font-weight: 900; color: #4ade80;
+            text-shadow: 0 0 8px #052e16;
+            animation: float-up 2s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-900">
+    <div id="app-container">
+        <header class="text-center p-4">
+            <h1 class="text-xl md:text-2xl font-bold text-indigo-300">⚜️ Unidad Scout Santa Ana</h1>
+            <p class="text-slate-400 text-sm md:text-base">Puntajes</p>
+        </header>
+        <main id="mountain-container">
+            <div class="mountain-back mountain-layer"></div>
+            <div class="mountain-front mountain-layer"></div>
+            <div class="mountain-snow mountain-layer"></div>
+            <div class="shooting-star ss-1"></div>
+            <div class="shooting-star ss-2"></div>
+            <div class="shooting-star ss-3"></div>
+            <div id="patrol-0-climber" class="patrol-climber"></div>
+            <div id="patrol-1-climber" class="patrol-climber"></div>
+            <div id="patrol-2-climber" class="patrol-climber"></div>
+        </main>
+        <section class="p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-center bg-slate-900/50 backdrop-blur-sm border-t border-slate-700">
+            <div class="md:col-span-3">
+                <div id="scoreboard" class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm"></div>
+            </div>
+            <div class="text-center">
+                <button id="update-button" class="w-full bg-green-500 text-slate-900 font-bold py-3 px-4 rounded-lg shadow-lg hover:bg-green-400 active:scale-95 transition-transform duration-150">
+                    Mostrar Avance Semanal
+                </button>
+            </div>
+        </section>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const MAX_SCORE = 500;
+            
+            // ==================================================================
+            // ===== ¡INSTRUCCIONES! ACTUALIZA ESTOS DATOS CADA SEMANA =====
+            // ==================================================================
+            // 1. 'previousScore' debe ser el puntaje total de la semana pasada.
+            // 2. 'score' debe ser el NUEVO puntaje total de esta semana.
+            // 3. 'logoUrl' es el nombre de tu archivo de logo (subido a GitHub).
+            // ==================================================================
+            const patrols = [
+                { id: 0, name: 'Gaviotas',  previousScore: 50, score: 75, logoUrl: 'logo_gaviota.png', color: 'bg-red-500' },
+                { id: 1, name: 'Ardillas',  previousScore: 80, score: 95, logoUrl: 'logo_ardilla.png', color: 'bg-yellow-500' },
+                { id: 2, name: 'Koalas',    previousScore: 65, score: 65, logoUrl: 'logo_koala.png', color: 'bg-purple-500' }
+            ];
+
+            const mountainContainer = document.getElementById('mountain-container');
+            const updateButton = document.getElementById('update-button');
+            let isUpdated = false;
+
+            function createStars() {
+                for (let i = 0; i < 50; i++) {
+                    const star = document.createElement('div');
+                    star.className = 'star';
+                    star.style.top = `${Math.random() * 60}%`;
+                    star.style.left = `${Math.random() * 100}%`;
+                    star.style.animationDelay = `${Math.random() * 4}s`;
+                    mountainContainer.appendChild(star);
+                }
+            }
+
+            function renderState(showFinalScore = false) {
+                const scoreboard = document.getElementById('scoreboard');
+                const sortedPatrols = [...patrols].sort((a, b) => (showFinalScore ? b.score : b.previousScore) - (showFinalScore ? a.score : a.previousScore));
+                scoreboard.innerHTML = '';
+
+                sortedPatrols.forEach((patrol, index) => {
+                    const currentScore = showFinalScore ? patrol.score : patrol.previousScore;
+                    const advance = patrol.score - patrol.previousScore;
+
+                    const scoreEntry = document.createElement('div');
+                    scoreEntry.className = `p-2 rounded-lg flex items-center justify-between bg-slate-800 border-l-4 ${patrol.color.replace('bg-', 'border-')}`;
+                    scoreEntry.innerHTML = `
+                        <div class="flex items-center gap-2">
+                             <span class="font-bold text-slate-400">${index + 1}.</span>
+                             <span class="font-semibold text-slate-200">${patrol.name}</span>
+                        </div>
+                        <div class="text-right">
+                             <span class="font-bold text-white">${currentScore} pts</span>
+                             <span class="text-green-400 text-xs ml-1">${(showFinalScore && advance > 0) ? `+${advance}` : ''}</span>
+                        </div>
+                    `;
+                    scoreboard.appendChild(scoreEntry);
+
+                    const climberElement = document.getElementById(`patrol-${patrol.id}-climber`);
+                    const percentage = Math.min((currentScore / MAX_SCORE) * 100, 100);
+                    const effectivePercentage = Math.min(percentage, 90);
+                    climberElement.style.bottom = `${10 + effectivePercentage * 0.8}%`;
+
+                    if (patrol.logoUrl) {
+                        climberElement.style.backgroundImage = `url('${patrol.logoUrl}')`;
+                    } else {
+                        climberElement.classList.add(patrol.color);
+                        climberElement.textContent = patrol.name.charAt(0);
+                    }
+                });
+            }
+
+            function showProgressAnimation(patrolId, points) {
+                if (points <= 0) return;
+                const climberElement = document.getElementById(`patrol-${patrolId}-climber`);
+                const progressText = document.createElement('span');
+                progressText.className = 'progress-float';
+                progressText.textContent = `+${points} pts`;
+                climberElement.appendChild(progressText);
+                setTimeout(() => { progressText.remove(); }, 2000);
+            }
+
+            updateButton.addEventListener('click', () => {
+                if (isUpdated) return;
+                isUpdated = true;
+                
+                patrols.forEach(patrol => {
+                    const advance = patrol.score - patrol.previousScore;
+                    showProgressAnimation(patrol.id, advance);
+                });
+
+                renderState(true); // Re-render con los puntajes finales
+                updateButton.disabled = true;
+                updateButton.classList.add('opacity-50', 'cursor-not-allowed');
+            });
+
+            // Initial setup
+            createStars();
+            const initialHorizontalPositions = ['30%', '50%', '70%'];
+            patrols.forEach((patrol, index) => {
+                 const climber = document.getElementById(`patrol-${patrol.id}-climber`);
+                 climber.style.left = initialHorizontalPositions[index];
+            });
+            renderState(false); // Render inicial con puntajes de la semana pasada
+        });
+    </script>
+</body>
+</html>
+
